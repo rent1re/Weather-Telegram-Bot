@@ -136,3 +136,115 @@ WEEKDAYS_FULL = {
     "en": {"Monday": "Monday", "Tuesday": "Tuesday", "Wednesday": "Wednesday", "Thursday": "Thursday", "Friday": "Friday", "Saturday": "Saturday", "Sunday": "Sunday"},
 }
  
+
+def t(user_id: int, key: str) -> str:
+    lang = user_lang.get(user_id, "ru")
+    return TEXTS[lang].get(key, key)
+ 
+ 
+def get_lang(user_id: int) -> str:
+    return user_lang.get(user_id, "ru")
+ 
+ 
+def get_wmo(code: int, lang: str):
+    return WMO_CODES[lang].get(code, ("—", "🌡️"))
+ 
+ 
+def wind_deg_to_dir(deg: float, lang: str) -> str:
+    ru = ["С", "СВ", "В", "ЮВ", "Ю", "ЮЗ", "З", "СЗ"]
+    en = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+    dirs = ru if lang == "ru" else en
+    return dirs[round(deg / 45) % 8]
+ 
+ 
+def format_date(date_str: str, lang: str, full: bool = False) -> str:
+    dt = datetime.strptime(date_str, "%Y-%m-%d")
+    names = WEEKDAYS_FULL[lang] if full else WEEKDAYS_SHORT[lang]
+    day_name = names.get(dt.strftime("%A"), dt.strftime("%A"))
+    return f"{day_name}, {dt.strftime('%d.%m')}"
+ 
+ 
+def uv_level(uv: float, lang: str) -> str:
+    if uv <= 2:
+        return TEXTS[lang]["uv_low"]
+    elif uv <= 5:
+        return TEXTS[lang]["uv_mid"]
+    elif uv <= 7:
+        return TEXTS[lang]["uv_high"]
+    return TEXTS[lang]["uv_very_high"]
+
+def get_coordinates(city: str, lang: str) -> dict | None:
+    url = "https://geocoding-api.open-meteo.com/v1/search"
+    params = {"name": city, "count": 1, "language": lang, "format": "json"}
+    try:
+        r = requests.get(url, params=params, timeout=10)
+        if r.status_code == 200:
+            data = r.json()
+            if data.get("results"):
+                res = data["results"][0]
+                return {
+                    "lat": res["latitude"],
+                    "lon": res["longitude"],
+                    "name": res["name"],
+                    "country": res.get("country", ""),
+                }
+        return None
+    except Exception as e:
+        print(f"Geocoding error: {e}")
+        return None
+ 
+ 
+#  ЗАПРОСЫ К API
+def get_current_weather(lat: float, lon: float) -> dict | None:
+    url = "https://api.open-meteo.com/v1/forecast"
+    params = {
+        "latitude": lat, "longitude": lon,
+        "current": [
+            "temperature_2m", "apparent_temperature", "relative_humidity_2m",
+            "wind_speed_10m", "wind_direction_10m", "weather_code",
+            "surface_pressure", "cloud_cover", "precipitation", "uv_index"
+        ],
+        "timezone": "auto",
+    }
+    try:
+        r = requests.get(url, params=params, timeout=10)
+        return r.json() if r.status_code == 200 else None
+    except Exception as e:
+        print(f"Weather error: {e}")
+        return None
+ 
+ 
+def get_forecast(lat: float, lon: float) -> dict | None:
+    url = "https://api.open-meteo.com/v1/forecast"
+    params = {
+        "latitude": lat, "longitude": lon,
+        "daily": [
+            "temperature_2m_max", "temperature_2m_min", "weather_code",
+            "precipitation_sum", "precipitation_probability_max",
+            "wind_speed_10m_max", "uv_index_max", "sunrise", "sunset"
+        ],
+        "timezone": "auto",
+        "forecast_days": 7,
+    }
+    try:
+        r = requests.get(url, params=params, timeout=10)
+        return r.json() if r.status_code == 200 else None
+    except Exception as e:
+        print(f"Forecast error: {e}")
+        return None
+ 
+ 
+def get_history(lat: float, lon: float, date_str: str) -> dict | None:
+    url = "https://archive-api.open-meteo.com/v1/archive"
+    params = {
+        "latitude": lat, "longitude": lon,
+        "start_date": date_str, "end_date": date_str,
+        "daily": ["temperature_2m_max", "temperature_2m_min", "weather_code", "precipitation_sum", "wind_speed_10m_max"],
+        "timezone": "auto",
+    }
+    try:
+        r = requests.get(url, params=params, timeout=10)
+        return r.json() if r.status_code == 200 else None
+    except Exception as e:
+        print(f"History error: {e}")
+        return None
