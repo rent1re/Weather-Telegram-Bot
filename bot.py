@@ -3,14 +3,15 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import requests
 from datetime import datetime, timedelta
 
-
+#settings for bot
 BOT_TOKEN = "8774276245:AAF5xLq0I1TQBqPijDydlo58WuO2KrVU4I4"
  
 bot = telebot.TeleBot(BOT_TOKEN)
-user_lang = {}  # {user_id: "ru" | "en"}
+
+# localisition
+
+user_lang = {}  
  
- 
-#  localisition
 
 TEXTS = {
     "ru": {
@@ -141,22 +142,22 @@ def t(user_id: int, key: str) -> str:
     lang = user_lang.get(user_id, "ru")
     return TEXTS[lang].get(key, key)
  
- 
+#languages
 def get_lang(user_id: int) -> str:
     return user_lang.get(user_id, "ru")
  
- 
+ #wmo codes
 def get_wmo(code: int, lang: str):
     return WMO_CODES[lang].get(code, ("—", "🌡️"))
- 
- 
+
+#napravlenie vetra 
 def wind_deg_to_dir(deg: float, lang: str) -> str:
     ru = ["С", "СВ", "В", "ЮВ", "Ю", "ЮЗ", "З", "СЗ"]
     en = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
     dirs = ru if lang == "ru" else en
     return dirs[round(deg / 45) % 8]
  
- 
+#formatter date
 def format_date(date_str: str, lang: str, full: bool = False) -> str:
     dt = datetime.strptime(date_str, "%Y-%m-%d")
     names = WEEKDAYS_FULL[lang] if full else WEEKDAYS_SHORT[lang]
@@ -173,6 +174,8 @@ def uv_level(uv: float, lang: str) -> str:
         return TEXTS[lang]["uv_high"]
     return TEXTS[lang]["uv_very_high"]
 
+
+#poluchenie koordinatov goroda
 def get_coordinates(city: str, lang: str) -> dict | None:
     url = "https://geocoding-api.open-meteo.com/v1/search"
     params = {"name": city, "count": 1, "language": lang, "format": "json"}
@@ -213,7 +216,7 @@ def get_current_weather(lat: float, lon: float) -> dict | None:
         print(f"Weather error: {e}")
         return None
  
- 
+#poluchenie pogody s api
 def get_forecast(lat: float, lon: float) -> dict | None:
     url = "https://api.open-meteo.com/v1/forecast"
     params = {
@@ -349,7 +352,7 @@ def format_history(data: dict, loc: dict, date_str: str, user_id: int) -> str:
     return text
  
  
-#  Keyvoard, Buttons
+#  Keyboard, Buttons
 def lang_keyboard() -> InlineKeyboardMarkup:
     kb = InlineKeyboardMarkup()
     kb.add(
@@ -374,10 +377,9 @@ def main_keyboard(city: str, user_id: int) -> InlineKeyboardMarkup:
     )
     return kb
  
- 
-# ============================
+
 #  HANDLERS
-# ============================
+
 @bot.message_handler(commands=["start"])
 def cmd_start(message):
     bot.send_message(
@@ -499,5 +501,5 @@ def handle_callback(call):
  
 #  ЗАПУСК
 if __name__ == "__main__":
-    print("🤖 Бот запущен!")
+    print("Bot is running...")
     bot.infinity_polling(timeout=10, long_polling_timeout=5)
